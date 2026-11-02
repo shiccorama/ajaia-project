@@ -113,6 +113,7 @@ coordination contract. DeepSeek's entry is recorded below.
   markup using the existing TipTap-shaped API payload. Document text is escaped and link
   schemes are allowlisted when rendering.
 - Contract lock commit: `8f15df252de3c8d084191ce8795802e5bbd9a14d`.
+- App and submission integration commit: `a89d405eb50a083a71a728c5d11e9ef473f3e880`.
 - Current verification: `npm test` 35/35; `npm run lint` passed; UI-only TypeScript check
   passed. Project-wide typecheck was clean before an untracked `scripts/_probe.ts` appeared;
   the probe conflicts with `scripts/smoke.ts` globals and has TypeScript errors. It is not
