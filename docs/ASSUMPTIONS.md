@@ -6,7 +6,7 @@ breaks if it is wrong.
 
 | # | Area | Assumption | Why | If wrong |
 |---|---|---|---|---|
-| A1 | Contract | No locked `docs/AGENT_CONTRACT.md` existed, so DeepSeek drafted one | Without a written contract, two builders will implement two different APIs | ChatGPT must review and lock the draft before other lanes start |
+| A1 | Contract | DeepSeek drafted the contract; ChatGPT reviewed implementation and locked it as v1.0.0 on 2026-11-03 | The implementation needed one canonical API before UI integration | Any change to the shared contract now requires a versioned amendment |
 | A2 | Auth | Claude's auth lane was unavailable, so a **reference** implementation of the identity + authorization seam was written | The API cannot be authorized without an identity source; inventing a second one would violate the "no competing auth system" rule | Claude replaces the internals of `lib/server/auth/**` and `lib/server/authz/**`; no DeepSeek file needs to change |
 | A3 | Roles | `viewer` may read only; `editor` may read, edit and rename; only `owner` may share, delete and manage members | The brief states viewers cannot edit/rename/reshare; the rest follows from the owner/editor/viewer split | Adjust the `AccessRequirement` mapping in `lib/server/authz/access.ts` |
 | A4 | Error codes | Non-members get `404`, role-forbidden members get `403` | The brief requires "handle missing/inaccessible IDs without leaking content" | Change the throw sites in `lib/server/authz/access.ts` |
@@ -22,13 +22,11 @@ breaks if it is wrong.
 | A14 | Next caching | `cacheComponents: false`, routes use `export const dynamic = 'force-dynamic'` | With `cacheComponents` on, Next 16 bans `dynamic`/`revalidate` and forces `connection()`, which breaks isolated route-handler testing | ChatGPT re-enables it and adapts the routes once the UI lands |
 | A15 | No CSRF tokens | `SameSite=Lax` cookies only | Out of scope for the assignment; noted in `docs/SECURITY_MODEL.md` §8 | Add an `Origin` check or CSRF token in the auth lane |
 
-## Open questions for ChatGPT
+## Resolved at contract lock (v1.0.0)
 
-1. Should `GET /api/documents` return document bodies, or stay list-only? (A11)
-2. Should the list endpoint split into `?scope=owned|shared`, or keep one array with an
-   `ownership` field on each item? (Currently one array with `ownership`.)
-3. Do you want `docs/AGENT_CONTRACT.md` to keep the single-error-envelope shape, or
-   switch to per-status shapes?
-4. Does the UI lane want a dedicated `POST /api/documents/:id/share` convenience
-   route, or is `POST /api/documents/:id/members` enough?
-5. Should document titles be unique per owner, or free-form? (Currently free-form.)
+1. `GET /api/documents` stays list-only; it returns a single array with an `ownership`
+   field (A11).
+2. The list endpoint is not split by scope; clients filter by `ownership`.
+3. Errors keep the single `{ error: { code, message, details? } }` envelope.
+4. Sharing uses `POST /api/documents/:id/members`; there is no convenience `/share` route.
+5. Titles are free-form and are not unique per owner.

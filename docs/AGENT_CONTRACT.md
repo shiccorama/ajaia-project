@@ -1,18 +1,13 @@
 # AGENT_CONTRACT.md — canonical shared contract
 
-**Status:** `PROPOSED (draft 0.1.0)` — **NOT YET LOCKED**
-**Drafted by:** DeepSeek lane (backend)
+**Status:** `LOCKED (1.0.0)`
+**Drafted by:** DeepSeek lane (backend); reviewed and locked by ChatGPT integration owner
 **Date:** 2026-11-03
 
-> **Blocker recorded (Gate 1 deviation).** No locked contract, no repository, and no
-> `docs/SECURITY_MODEL.md` existed when this lane started. The master plan assigns the
-> canonical contract to **Claude** and the lock to **ChatGPT**. To avoid writing code
-> against an unrecorded interpretation, this file is a **proposed baseline** written from
-> the rules already stated in the master integration plan and the DeepSeek handoff brief.
->
-> **Action required:** ChatGPT must approve or amend this file, set `Status: LOCKED`, and
-> distribute the identical version to every builder before other lanes begin implementation.
-> DeepSeek's API below is written to be substitutable if ChatGPT changes route shapes.
+> Lock decision: this contract was reconciled against the canonical repository at
+> `58ae60799e94906a49508805e02284b950c7f253`. The route shapes and authorization behavior
+> below match the implementation. The open choices from `docs/ASSUMPTIONS.md` are resolved
+> in §10. Changes to shared interfaces require a new contract version and a recorded review.
 
 **Repository:** `ajaia-collab` (single repo, single app)
 **Stack:** TypeScript · Next.js 16 (App Router) · Drizzle ORM · PostgreSQL 16 · Zod · Vitest
@@ -223,8 +218,9 @@ zod schema the server validates against.
 
 - **Allowed extensions:** `.txt`, `.md`, `.markdown`.
 - **Allowed MIME types:** `text/plain`, `text/markdown`, `text/x-markdown`,
-  `text/markdown; charset=*`, plus generic `application/octet-stream` (the extension and
-  the content sniff must still pass).
+  `text/x-md`, `text/md`, `application/markdown`, and generic `application/octet-stream`.
+  Parameters are ignored; a missing MIME type is accepted. The extension and content
+  checks must still pass.
 - **Size limit:** 1 MB by default, overridable with `MAX_UPLOAD_BYTES`.
 - **Server-side checks, in order:** size → extension → MIME → UTF-8 decodability →
   no NUL bytes (binary rejection).
@@ -281,17 +277,17 @@ Names only — **never commit values**.
 | `lib/server/import/**` | **DeepSeek** | markdown/txt → TipTap JSON, upload validation |
 | `lib/server/http/**` | **DeepSeek** | error envelope + response helpers |
 | `lib/tiptap.ts` | **DeepSeek** | TipTap types + zod schema |
-| `lib/server/auth/**` | **Claude** ⚠️ | identity resolution — **DeepSeek wrote a reference implementation**; Claude replaces it |
-| `lib/server/authz/**` | **Claude** ⚠️ | access-control helper — **DeepSeek wrote a reference implementation**; Claude replaces it |
+| `lib/server/auth/**` | **Security lane (Gemini)** ⚠️ | identity resolution — current code is a reference implementation pending security review |
+| `lib/server/authz/**` | **Security lane (Gemini)** ⚠️ | access-control helper — current code is a reference implementation pending security review |
 | `app/api/**` | **DeepSeek** (backend routes) | thin HTTP handlers over the service layer |
 | `app/**` UI components | **Kimi** | editor, toolbar, save states, share dialog |
 | `app/layout.tsx`, `app/page.tsx`, shell | **ChatGPT** | app shell, routing, integration |
 
-⚠️ **Seam notice.** Claude's lane was not available when this lane was built. Rather than
-invent a parallel auth system, DeepSeek implemented the **smallest possible seam** with
-the exact interface Claude needs, so Claude can swap the implementation without touching
-any DeepSeek file. The seam contracts are documented in `lib/server/auth/README.md` and
-`lib/server/authz/README.md`.
+⚠️ **Seam notice.** The security lane was not available when the backend was built.
+Rather than invent a parallel auth system, DeepSeek implemented a small reference seam.
+Any replacement must preserve its documented interface or amend this contract and the
+routes in the same reviewed change. The seam contracts are in `lib/server/auth/README.md`
+and `lib/server/authz/README.md`.
 
 ---
 
@@ -302,3 +298,23 @@ any DeepSeek file. The seam contracts are documented in `lib/server/auth/README.
 2. Builders record what they changed in `docs/WORK_LOG.md`.
 3. Cross-lane changes are proposed, never silently applied.
 4. Keep an assumptions/decision log — see `docs/ASSUMPTIONS.md`.
+
+---
+
+## 10. Lock decisions (1.0.0)
+
+These choices resolve the open questions in `docs/ASSUMPTIONS.md` and match the current
+service and route implementation:
+
+1. `GET /api/documents` returns one `{ documents: [...] }` array containing owned and
+   shared list items with an `ownership` field; list items omit `content`.
+2. All errors use the single `{ error: { code, message, details? } }` envelope.
+3. Sharing uses `POST /api/documents/:id/members`; no convenience `/share` route is added.
+4. Titles are free-form per owner (no uniqueness constraint), trimmed, non-empty, and
+   limited to 200 characters.
+5. Role permissions, import rules, limits, and all other route shapes above are the
+   integration contract for version 1.0.0.
+
+**Lock boundary:** this locks the API, data, and authorization contract for integration.
+The auth/authz helpers are currently the reference implementation pending the assigned
+security review. Any proposed behavior change must be submitted as a contract amendment.

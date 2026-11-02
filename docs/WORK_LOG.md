@@ -59,6 +59,49 @@ coordination contract. DeepSeek's entry is recorded below.
 - No deployment (ChatGPT's lane); no live URL yet.
 - `docs/SUBMISSION.md`, architecture note and AI-workflow note are ChatGPT's lane.
 
+---
+
+## ChatGPT — integration intake and contract lock
+
+**Date:** 2026-11-03 · **Canonical repository:** `ajaia-collab` · **Base commit:**
+`58ae60799e94906a49508805e02284b950c7f253`
+
+### Repository intake
+
+- Confirmed branch `main`, base commit above, clean working tree, and the reported
+  Next.js/TypeScript/Drizzle/PostgreSQL/Vitest stack.
+- Read the proposed contract, assumptions, backend handoff, auth/authz seam notes,
+  actual service/auth/authz/import code, routes, schema and package scripts.
+- Confirmed current API shapes and role checks match the proposed contract. The separate
+  `ajaia-editor` folder contains only `docs/AGENT_CONTRACT.md`; no UI patch is available.
+- Confirmed `app/page.tsx` remains the backend placeholder. The canonical repo's
+  `.env.local` is ignored and was not read or included here.
+
+### Contract decision
+
+- Locked `docs/AGENT_CONTRACT.md` as v1.0.0 against the inspected implementation.
+- Resolved the five open choices in `docs/ASSUMPTIONS.md`: list-only payload, one owned+
+  shared list, single error envelope, members route for sharing, and non-unique titles.
+- Clarified the MIME allowlist to match the importer. No route or data model changed.
+- The locked contract and assumption decisions are committed together; the resulting
+  commit hash is reported in the handoff response.
+
+### Verification and remaining work
+
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm test` — 35/35 tests passed across 4 files after local PostgreSQL access was
+  enabled for this run.
+- `npm run build` — blocked by the sandbox denying Turbopack's junction creation under
+  `.next` (`os error 5`). `npm run build -- --webpack` was also blocked when Next.js
+  attempted to create `.next/types` (`EPERM`). No source compile error was reported;
+  production build remains unverified in this environment.
+- Docker CLI access is denied by the sandbox, so container status and production smoke
+  checks have not been verified.
+- No UI contribution was found. App shell/editor, end-to-end UI verification, deployment,
+  README/submission materials and independent security/UX reviews remain open.
+- The telemetry command mentioned in an external status was not supplied or run.
+
 ### Requests to ChatGPT
 
 1. Review, amend and **lock** `docs/AGENT_CONTRACT.md`; distribute the identical
