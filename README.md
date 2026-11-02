@@ -1,14 +1,12 @@
 # ajaia-collab
 
-A lightweight collaborative document editor — **backend lane**.
+A lightweight collaborative document editor with server-persisted rich-text documents,
+sharing roles, and `.txt` / Markdown import.
 
-> **Scope note.** This repository currently contains the **backend only**: the data
-> model, the document API, server-side authorization, and the `.txt` / `.md` import
-> pipeline. The editor interface belongs to the UI lane and is **not** part of this
-> build, so `app/page.tsx` is a placeholder that lists the available endpoints.
->
-> See `docs/DEEPSEEK_HANDOFF.md` for the full handoff and `docs/AGENT_CONTRACT.md`
-> for the API contract.
+The current app includes the API and a responsive single-document editor UI. Demo account
+switching is intentionally labeled and is **not production authentication**. No live
+deployment is configured in this checkout; see `WALKTHROUGH_URL.txt` for the current
+walkthrough status. See `docs/AGENT_CONTRACT.md` for the locked API contract.
 
 ---
 
@@ -167,14 +165,14 @@ npm run verify
 ```
 app/
   api/                    HTTP routes (thin handlers over the service layer)
-  layout.tsx              app shell — ChatGPT's lane
-  page.tsx                placeholder — ChatGPT/Kimi's lane
+  layout.tsx              app layout and metadata
+  page.tsx                workspace shell, editor and sharing UI
 lib/
   tiptap.ts               TipTap types, Zod schema, limits
   db/                     schema, client, migrations, seed
   server/
-    auth/                 identity resolution — CLAUDE'S SEAM
-    authz/                access-control helper — CLAUDE'S SEAM
+    auth/                 cookie session and identity resolution
+    authz/                server-side document access checks
     documents/            repository + service layer
     import/               md/txt → TipTap JSON, upload validation
     http/                 error envelope, response helpers, body parsing
@@ -190,11 +188,17 @@ docs/                     contract, security model, work log, assumptions, hando
 
 | File | Purpose |
 |---|---|
-| `docs/AGENT_CONTRACT.md` | **The canonical API contract** — currently `PROPOSED`, awaiting ChatGPT's lock |
-| `docs/SECURITY_MODEL.md` | Security properties and residual risks — Claude's lane |
+| `docs/AGENT_CONTRACT.md` | **The canonical API contract**, locked as v1.0.0 |
+| `docs/SECURITY_MODEL.md` | Current security properties and known residual risks; independent review pending |
 | `docs/DEEPSEEK_HANDOFF.md` | Backend lane handoff, integration notes for ChatGPT and Kimi |
 | `docs/WORK_LOG.md` | Cross-lane work log — ChatGPT owns |
 | `docs/ASSUMPTIONS.md` | Every assumption made, why, and what breaks if it is wrong |
+| `docs/ARCHITECTURE.md` | Component boundaries, data flow and deployment shape |
+| `docs/AI_WORKFLOW.md` | Actual AI-assisted work recorded for this checkout |
+| `docs/SUBMISSION.md` | Submission inventory and verification status |
+
+The walkthrough URL placeholder is `WALKTHROUGH_URL.txt`; a URL will be added only after
+a walkthrough has actually been recorded and published.
 
 ---
 

@@ -98,9 +98,29 @@ coordination contract. DeepSeek's entry is recorded below.
   production build remains unverified in this environment.
 - Docker CLI access is denied by the sandbox, so container status and production smoke
   checks have not been verified.
-- No UI contribution was found. App shell/editor, end-to-end UI verification, deployment,
-  README/submission materials and independent security/UX reviews remain open.
+- No UI contribution was found at intake. App shell/editor and submission materials were
+  subsequently completed by the ChatGPT integration lane below. Browser verification,
+  deployment, and independent security/UX reviews remain open.
 - The telemetry command mentioned in an external status was not supplied or run.
+
+### ChatGPT — app shell integration
+
+- Implemented the app shell and first integrated editor in `app/page.tsx`, with styling in
+  `app/globals.css`. It uses the locked API for demo-only account entry, owned/shared
+  document listing, create/open/rename/edit, formatting, autosave with retry and a local
+  draft recovery path, `.txt`/`.md` import, and owner-managed sharing.
+- No external font or editor package was added; editor JSON is mapped to/from safe DOM
+  markup using the existing TipTap-shaped API payload. Document text is escaped and link
+  schemes are allowlisted when rendering.
+- Contract lock commit: `8f15df252de3c8d084191ce8795802e5bbd9a14d`.
+- Current verification: `npm test` 35/35; `npm run lint` passed; UI-only TypeScript check
+  passed. Project-wide typecheck was clean before an untracked `scripts/_probe.ts` appeared;
+  the probe conflicts with `scripts/smoke.ts` globals and has TypeScript errors. It is not
+  part of this lane and was left untouched.
+- Production build remains blocked by sandbox `EPERM` while creating Next.js output under
+  `.next` (Turbopack junction and Webpack type-output paths). UI has not been run in a
+  browser here. Deployment, deployed persistence checks, and independent reviews remain
+  outstanding.
 
 ### Requests to ChatGPT
 

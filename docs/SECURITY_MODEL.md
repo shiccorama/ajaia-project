@@ -1,12 +1,12 @@
 # SECURITY_MODEL.md — proposed draft
 
-**Status:** `PROPOSED (draft 0.1.0)` — **Claude owns this document.**
+**Status:** `PROPOSED (draft 0.1.0)` — **security review pending.**
 **Drafted by:** DeepSeek lane, 2026-11-03, to unblock implementation.
 
-> Claude's lane (architecture/security lead) was not available when the backend lane
-> started. This file records the security properties the backend actually implements,
-> so the security reviewer (GLM) has something concrete to red-team. Claude should
-> replace or extend it. Nothing here is a substitute for GLM's independent review.
+> The architecture/security lane was not available when the backend lane started. This
+> file records the security properties the backend actually implements as a starting
+> point for Gemini's architecture review and GLM's independent red-team review. Neither
+> review is represented as complete here.
 
 ---
 
@@ -138,11 +138,15 @@ prioritise them.
 | TipTap renders node types the server does not whitelist | A malicious client could store an exotic node type | The TipTap editor only renders registered extensions; the server validates *shape*, not the node vocabulary |
 | No audit log of share changes | Cannot reconstruct who shared what | `document_members.created_at` gives a partial trail |
 
-## 9. What was verified
+## 9. Verification status (2026-11-03)
 
-- 35 automated tests (`npm test`) against a real PostgreSQL database, covering
-  persistence after re-fetch, formatting round-trip, unauthenticated access, non-member
-  access, viewer write rejection, editor/owner boundaries, self-share, unknown user,
-  owner-removal protection, role change, member removal, and upload rejection paths.
-- 25 end-to-end checks (`npm run smoke`) against the running production build.
-- `npm run typecheck` and `npm run build` are clean.
+- `npm test`: **35/35 passed** against the configured PostgreSQL test database during
+  the current integration pass, covering persistence, formatting round-trip,
+  authorization, sharing rules, and upload rejection paths.
+- `npm run lint`: passed during the current integration pass.
+- `npm run typecheck`: passed before an untracked `scripts/_probe.ts` appeared. The
+  current full typecheck fails because that file conflicts with `scripts/smoke.ts` globals
+  and has separate type errors; the probe was not modified.
+- Production build: not verified. Next build output was blocked by sandbox file-system
+  errors under `.next`.
+- `npm run smoke`: not run during this pass; Docker access was denied by the sandbox.
