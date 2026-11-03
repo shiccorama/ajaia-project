@@ -144,9 +144,9 @@ prioritise them.
   the current integration pass, covering persistence, formatting round-trip,
   authorization, sharing rules, and upload rejection paths.
 - `npm run lint`: passed during the current integration pass.
-- `npm run typecheck`: passed before an untracked `scripts/_probe.ts` appeared. The
-  current full typecheck fails because that file conflicts with `scripts/smoke.ts` globals
-  and has separate type errors; the probe was not modified.
-- Production build: not verified. Next build output was blocked by sandbox file-system
-  errors under `.next`.
-- `npm run smoke`: not run during this pass; Docker access was denied by the sandbox.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm run build`: passed using the Webpack compiler.
+- `npm run smoke`: **25/25 passed** against the isolated test database and a local
+  production server.
+- Full browser interaction review and independent security review remain pending.

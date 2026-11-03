@@ -16,14 +16,15 @@
 
 ## Review and release status
 
-- Backend test suite: **35/35 passed** in the current environment.
-- Lint: passed. UI-only TypeScript check: passed.
-- Full project typecheck: currently blocked by an untracked `scripts/_probe.ts` that
-  collides with `scripts/smoke.ts` and contains type errors. The project typecheck passed
-  before that file appeared; the probe was left untouched.
-- Production build: not verified. Turbopack and Webpack builds failed on sandbox
-  permissions while creating generated output under `.next`.
-- Local browser walkthrough: not performed.
+- Backend test suite: **35/35 passed**.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm run build`: passed with the Webpack compiler (`next build --webpack`).
+- Production server HTTP smoke check: `/` returned 200, `/api/health` returned 200 with
+  the database up, and unauthenticated `/api/me` returned the expected 401.
+- API end-to-end smoke suite: **25/25 passed** against the isolated test database.
+- Local browser acceptance walkthrough: not performed; the HTTP smoke check does not
+  verify editor interactions in a browser.
 - Live deployment and durable production persistence: not configured or verified.
 - Independent functional/UX and security review: pending.
 - Reviewer credentials: the local seeded demo users are listed in `README.md`; they are
@@ -33,13 +34,9 @@
 
 ## Remaining release gates
 
-1. Resolve or remove the untracked probe through its owner and restore a clean full
-   project typecheck.
-2. Run production build and smoke checks in an environment that permits Next.js build
-   output and Docker/PostgreSQL access.
-3. Browser-test create, format, save, refresh/reopen, import, sharing, viewer mode, and
+1. Browser-test create, format, save, refresh/reopen, import, sharing, viewer mode, and
    unauthorized access against the integrated UI.
-4. Obtain independent security and functional/UX review reports and close their P0/P1
+2. Obtain independent security and functional/UX review reports and close their P0/P1
    findings.
-5. Configure a durable production database, deploy, test persistence with both demo
+3. Configure a durable production database, deploy, test persistence with both demo
    roles, and fill in the product and walkthrough URLs.

@@ -28,7 +28,8 @@ not claim that other model chats or independent reviewers were run.
 
 Work used repository file reads/search, source edits, Git, and local npm commands. No
 external model chat was contacted and no reviewer report was received during this pass.
-No deployment, account creation, or third-party upload was performed. Production build and
-browser review were blocked by this environment's permissions on Next.js generated output;
-see `docs/WORK_LOG.md`. The AI workflow record should be updated if later model patches,
-reviewers, or deployment tools are used.
+No deployment, account creation, or third-party upload was performed. The initial default
+Turbopack build was blocked by this environment's permissions on Next.js generated output;
+switching the scripts to the Webpack compiler allowed the production build and API smoke
+checks to pass. A browser interaction review remains outstanding; see `docs/WORK_LOG.md`.
+Update this record if later model patches, reviewers, or deployment tools are used.

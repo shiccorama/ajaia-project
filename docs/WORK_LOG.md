@@ -132,3 +132,35 @@ coordination contract. DeepSeek's entry is recorded below.
 3. Confirm the `cacheComponents` decision in `next.config.ts`.
 4. Take ownership of `docs/WORK_LOG.md`, `docs/SECURITY_MODEL.md`, and the submission
    inventory.
+
+---
+
+### ChatGPT — dev-server loading fix
+
+- Reproduced the loading shell with `npm run dev -- --port 3002`. The page returned 200,
+  but requesting `/api/me` caused Turbopack to panic while making a `pg` junction under
+  `.next` (`os error 5`); the route returned 500, so the client never finished
+  hydration.
+- Changed `npm run dev` to use Next's Webpack dev compiler, which avoids that junction.
+  Added the observed `192.168.56.1` browser host to `allowedDevOrigins` to permit its HMR
+  resources.
+- Removed the startup dependency on `/api/health`; session discovery now has a 5-second
+  timeout, the workspace appears before document-list loading completes, and demo login
+  remains available so the server can return the actual disabled/database error.
+- Verified with Webpack: dev server reached Ready, `GET /` returned 200, and unauthenticated
+  `GET /api/me` returned the expected 401 rather than a Turbopack 500. Typecheck and
+  targeted lint passed. Restart the existing dev server to load the script/config changes.
+
+### ChatGPT — README and local release verification
+
+- Replaced the setup-only README with a project guide covering prerequisites, Windows
+  setup, correct Docker `POSTGRES_DB` configuration, isolated tests, demo accounts,
+  features, roles, API routes, run/build/smoke commands, port selection, and troubleshooting.
+- Set both development and production build scripts to use Webpack for this Windows
+  environment. `npm run build` completes successfully with that configuration.
+- Re-ran `npm run typecheck`, `npm run lint`, and `npm test` (**35/35 passed**).
+- Started the production server locally: `/` returned 200, `/api/health` returned 200 with
+  `database: up`, and `/api/me` returned 401 without a session (expected).
+- Ran the 25-check API smoke suite against the isolated test database: **25/25 passed**.
+- Updated `docs/SUBMISSION.md`. Full browser interaction review, independent reviews, and
+  live deployment remain pending; this pass does not claim those were completed.

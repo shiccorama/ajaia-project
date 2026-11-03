@@ -3,6 +3,9 @@ import type { NextConfig } from 'next';
 const projectRoot = import.meta.dirname;
 
 const nextConfig: NextConfig = {
+  // The browser opens the dev server through this LAN address, so allow its
+  // development HMR/font resource requests as well as localhost.
+  allowedDevOrigins: ['192.168.56.1'],
   /**
    * Keep Next's file tracing and Turbopack rooted at this repository.
    *

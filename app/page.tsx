@@ -19,14 +19,27 @@ type DocumentData = DocumentItem & { content: TipTapDoc };
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed';
 type Member = { userId: string; email: string; displayName: string; role: Role; createdAt: string };
 
+class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 const EMPTY_DOC: TipTapDoc = { type: 'doc', content: [{ type: 'paragraph' }] };
 
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { credentials: 'same-origin', ...init });
-  if (response.status === 204) return undefined as T;
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.error?.message ?? 'Something went wrong. Please try again.');
-  return body as T;
+async function api<T>(url: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { credentials: 'same-origin', ...init, signal: init?.signal ?? controller.signal });
+    if (response.status === 204) return undefined as T;
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new ApiRequestError(body?.error?.message ?? 'Something went wrong. Please try again.', response.status);
+    return body as T;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('The server took too long to respond. Check that PostgreSQL is running, then try again.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -163,7 +176,6 @@ export default function Page() {
   const [shareRole, setShareRole] = useState<'editor' | 'viewer'>('editor');
   const [members, setMembers] = useState<Member[]>([]);
   const [owner, setOwner] = useState<Member | null>(null);
-  const [demoEnabled, setDemoEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -214,19 +226,27 @@ export default function Page() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      api<{ user: User }>('/api/me').catch(() => null),
-      api<{ status?: string }>('/api/health').catch(() => null),
-    ]).then(([me, health]) => {
-      if (!alive) return;
-      setDemoEnabled(Boolean(health));
-      if (me?.user) {
+    const openWorkspace = async () => {
+      try {
+        const me = await api<{ user: User }>('/api/me', undefined, 5000);
+        if (!alive) return;
         setUser(me.user);
-        return refreshList().then(() => undefined);
+        setLoading(false);
+        try {
+          await refreshList();
+        } catch (reason) {
+          if (alive) setError(reason instanceof Error ? reason.message : 'Could not load documents.');
+        }
+      } catch (reason) {
+        if (!alive) return;
+        if (!(reason instanceof ApiRequestError && reason.status === 401)) {
+          setError(reason instanceof Error ? reason.message : 'Could not connect to the workspace.');
+        }
+      } finally {
+        if (alive) setLoading(false);
       }
-      return undefined;
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load documents.'))
-      .finally(() => { if (alive) setLoading(false); });
+    };
+    void openWorkspace();
     return () => { alive = false; };
   }, [refreshList]);
 
@@ -241,7 +261,8 @@ export default function Page() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }),
       });
       setUser(result.user);
-      await refreshList();
+      setLoading(false);
+      void refreshList().catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load documents.'));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Demo sign-in failed.'); }
     finally { setBusy(false); setLoading(false); }
   };
@@ -393,12 +414,12 @@ export default function Page() {
         <div className="brand-mark">a</div><p className="eyebrow">YOUR SHARED WORKSPACE</p>
         <h1>Good ideas<br />start somewhere.</h1>
         <p className="login-copy">A calm space for the notes, plans, and documents you make with your team.</p>
-        {demoEnabled ? <div className="login-actions">
+        <div className="login-actions">
           <p className="field-label">Enter the demo workspace as</p>
           <button className="person-choice" disabled={busy} onClick={() => void signIn('alex@demo.local')}><span className="avatar avatar-gold">A</span><span><b>Alex Demo</b><small>alex@demo.local · owner</small></span><span className="choice-arrow">↗</span></button>
           <button className="person-choice" disabled={busy} onClick={() => void signIn('sam@demo.local')}><span className="avatar avatar-blue">S</span><span><b>Sam Demo</b><small>sam@demo.local · collaborator</small></span><span className="choice-arrow">↗</span></button>
           <p className="demo-note">Demo access only · no password needed</p>
-        </div> : <p className="error-message">Demo access is disabled. Configure authentication to continue.</p>}
+        </div>
         {error && <p className="error-message">{error}</p>}
         <div className="login-footer">Ajaia <span>·</span> Notes, made together</div>
       </div>

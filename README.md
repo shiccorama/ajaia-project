@@ -1,207 +1,243 @@
-# ajaia-collab
+# Ajaia Collaborative Editor
 
 A lightweight collaborative document editor with server-persisted rich-text documents,
-sharing roles, and `.txt` / Markdown import.
+owner/editor/viewer sharing, and `.txt` or Markdown import.
 
-The current app includes the API and a responsive single-document editor UI. Demo account
-switching is intentionally labeled and is **not production authentication**. No live
-deployment is configured in this checkout; see `WALKTHROUGH_URL.txt` for the current
-walkthrough status. See `docs/AGENT_CONTRACT.md` for the locked API contract.
+## Features
 
----
+- Create, rename, edit, save, and reopen documents.
+- Format text as bold, italic, underlined, headings, and bulleted or numbered lists.
+- Import `.txt`, `.md`, and `.markdown` files up to 1 MB. The server validates and
+  converts the file; uploaded HTML is not rendered as trusted content.
+- See documents you own and documents shared with you.
+- Share with a known workspace user as an editor or viewer. Owners manage access;
+  viewers are read-only. The server enforces every permission.
+- See saving, saved, and failed states. Failed saves can be retried, and the browser
+  keeps a local draft for recovery on that device.
 
-## Stack
+Document content is stored as structured TipTap-shaped JSON in PostgreSQL. The UI uses
+the existing API routes in this repository; it does not provide live simultaneous editing.
 
-| | |
-|---|---|
-| Language | TypeScript 5 (strict) |
-| Framework | Next.js 16 (App Router) · React 19 |
-| Database | PostgreSQL 16 · Drizzle ORM |
-| Validation | Zod 4 |
-| Editor content | TipTap JSON (stored as `jsonb`) |
-| Markdown parsing | `mdast-util-from-markdown` (CommonMark) |
-| Tests | Vitest 5 against a **real** PostgreSQL database |
+## Current release status
 
----
+The local development app and database have been checked. Typecheck, lint, the 35-test
+suite, the Webpack production build, and the 25-check API smoke run pass. A full browser
+acceptance walkthrough, external review, and live deployment are still required before
+calling this a production release. See [docs/SUBMISSION.md](docs/SUBMISSION.md) for the
+latest verification and open items.
 
-## Prerequisites
+## Requirements
 
-- Node.js 20.11+ (developed on Node 24)
-- Docker Desktop (for the local PostgreSQL) — or any reachable PostgreSQL 14+
-- npm 10+ (this project uses npm; npm 12's script allowlist is configured in `.npmrc`)
+- Node.js 20.11 or newer (the project was developed with Node.js 24)
+- npm 10 or newer
+- PostgreSQL 14 or newer
+- Docker Desktop for the optional local PostgreSQL container
 
----
+The checked-in `package-lock.json` supports reproducible installation with `npm ci`.
 
-## Setup
+## Local setup
 
-### 1. Install dependencies
+### 1. Install packages
 
-```bash
-npm install
+From the project directory:
+
+```powershell
+npm ci
 ```
 
 ### 2. Start PostgreSQL
 
-The project expects PostgreSQL on **host port 15432** — this machine already runs a
-native PostgreSQL on 5432, so the container is published on a free port. The named
-volume `ajaia-pgdata` keeps the data across restarts.
+You can use an existing PostgreSQL server or start the local Docker container. The sample
+configuration uses host port `15432` to avoid colliding with a local PostgreSQL on `5432`.
+The Docker volume preserves data when the container restarts.
 
-```bash
-docker run -d --name ajaia-pg \
-  -e POSTGRES_USER=ajaia \
-  -e POSTGRES_PASSWORD=ajaia_dev_pw \
-  -e POSTGRES_DATABASE=ajaia \
-  -p 15432:5432 \
-  -v ajaia-pgdata:/var/lib/postgresql/data \
-  --restart unless-stopped \
+```powershell
+docker run -d --name ajaia-pg `
+  -e POSTGRES_USER=ajaia `
+  -e POSTGRES_PASSWORD=ajaia_dev_pw `
+  -e POSTGRES_DB=ajaia `
+  -p 15432:5432 `
+  -v ajaia-pgdata:/var/lib/postgresql/data `
+  --restart unless-stopped `
   postgres:16-alpine
 ```
 
-Create the isolated test database:
+Create the isolated test database once:
 
-```bash
+```powershell
 docker exec ajaia-pg createdb -U ajaia ajaia_test
 ```
 
-### 3. Configure the environment
+If the container already exists, start it with `docker start ajaia-pg` instead of running
+the `docker run` command again. If you use another PostgreSQL instance or port, update the
+connection strings below and in `.env.local` accordingly.
 
-```bash
-cp .env.example .env.local
+### 3. Configure environment
+
+Copy the sample file and keep the resulting `.env.local` private:
+
+```powershell
+Copy-Item .env.example .env.local
 ```
 
-`.env.local` is git-ignored. Set at minimum:
+For the Docker setup above, `.env.local` should include:
 
-```
+```dotenv
 DATABASE_URL=postgres://ajaia:ajaia_dev_pw@localhost:15432/ajaia
 TEST_DATABASE_URL=postgres://ajaia:ajaia_dev_pw@localhost:15432/ajaia_test
 DEMO_MODE=true
 ```
 
-### 4. Migrate and seed
+The test database is isolated and is cleared by the test suites. Never point
+`TEST_DATABASE_URL` at a production or otherwise valuable database. `.env.local` is
+git-ignored; do not commit its values.
 
-```bash
-npm run db:migrate     # apply drizzle/ migrations
-npm run db:seed        # create the two demo accounts
+| Variable | Purpose | Default |
+|---|---|---|
+| `DATABASE_URL` | App PostgreSQL connection | Required |
+| `TEST_DATABASE_URL` | Isolated test database connection | Required for tests |
+| `DEMO_MODE` | Enables the demo account switcher | `false` |
+| `MAX_UPLOAD_BYTES` | Maximum import file size | `1048576` (1 MB) |
+| `SESSION_TTL_DAYS` | Session lifetime | `7` |
+| `NODE_ENV` | Runtime mode set by Next.js | Set by runtime |
+
+### 4. Apply schema and seed demo users
+
+```powershell
+npm run db:migrate
+npm run db:seed
 ```
 
-### 5. Run
+### 5. Run the app
 
-```bash
-npm run dev            # development, http://localhost:3000
-# or
-npm run build && npm start
+```powershell
+npm run dev
 ```
 
----
+The development script uses Next.js Webpack mode for compatibility with Windows setups
+that deny Turbopack's junction creation. Open the exact URL printed in the terminal.
+If port `3000` is already occupied, Next.js selects another port (commonly `3001`). Use
+that printed port, rather than opening a stale server on `3000`.
+
+The project allows the local browser host `192.168.56.1` for development resources. If
+you access the dev server through a different LAN host, add that host to
+`allowedDevOrigins` in `next.config.ts` and restart the dev server.
 
 ## Demo accounts
 
-Seeded by `npm run db:seed`. **Demo-only** — there is no password, and the account
-switcher is disabled unless `DEMO_MODE=true`.
+With `DEMO_MODE=true`, the start screen offers these seeded accounts. There are no
+passwords; this switcher is for local review only and is **not production authentication**.
 
-| Email | Name | ID |
+| Email | Display name | Seeded role |
 |---|---|---|
-| `alex@demo.local` | Alex Demo | `00000000-0000-4000-8000-000000000001` |
-| `sam@demo.local` | Sam Demo | `00000000-0000-4000-8000-000000000002` |
+| `alex@demo.local` | Alex Demo | Owner of documents Alex creates |
+| `sam@demo.local` | Sam Demo | Collaborator; receives access when a document is shared |
 
-Switch account with `POST /api/auth/demo-login` — it sets an httpOnly session cookie:
+You can share only with users already present in the workspace. The demo seed creates the
+two accounts above.
 
-```bash
-curl -c jar.txt -X POST http://localhost:3000/api/auth/demo-login \
-  -H 'content-type: application/json' \
-  -d '{"email":"alex@demo.local"}'
-```
+## API overview
 
----
+All routes use JSON except file import, which uses `multipart/form-data`.
 
-## API
-
-| Method | Route | Who |
+| Method | Route | Access |
 |---|---|---|
-| GET | `/api/health` | anyone |
-| POST | `/api/auth/demo-login` | demo mode only |
-| POST | `/api/auth/logout` | session |
-| GET | `/api/me` | session |
-| GET | `/api/documents` | session — owned **and** shared |
-| POST | `/api/documents` | session |
-| GET | `/api/documents/:id` | owner / editor / viewer |
-| PATCH | `/api/documents/:id` | owner / editor (autosave target) |
-| DELETE | `/api/documents/:id` | owner |
-| GET | `/api/documents/:id/members` | member |
-| POST | `/api/documents/:id/members` | owner |
-| PATCH | `/api/documents/:id/members/:userId` | owner |
-| DELETE | `/api/documents/:id/members/:userId` | owner |
-| POST | `/api/documents/import` | session — `.txt` / `.md` |
+| `GET` | `/api/health` | Public; reports database availability |
+| `POST` | `/api/auth/demo-login` | Demo mode only; sets an httpOnly session cookie |
+| `POST` | `/api/auth/logout` | Current session |
+| `GET` | `/api/me` | Current session |
+| `GET` | `/api/documents` | Current session; owned and shared list |
+| `POST` | `/api/documents` | Current session; creates an owned document |
+| `GET` | `/api/documents/:id` | Owner or member |
+| `PATCH` | `/api/documents/:id` | Owner or editor |
+| `DELETE` | `/api/documents/:id` | Owner only |
+| `GET` | `/api/documents/:id/members` | Document member |
+| `POST` | `/api/documents/:id/members` | Owner only; share by known email |
+| `PATCH` | `/api/documents/:id/members/:userId` | Owner only; change role |
+| `DELETE` | `/api/documents/:id/members/:userId` | Owner only; remove member |
+| `POST` | `/api/documents/import` | Current session; imports `.txt` or Markdown |
 
-Roles are `owner`, `editor`, `viewer`. A viewer can read but not edit, rename or
-reshare. A non-member receives `404` so document existence is not leaked.
+The owner can edit, rename, delete, and manage sharing. Editors can edit and rename.
+Viewers can read only. Non-members receive `404` for document reads and mutations to
+avoid disclosing whether a document exists. Full request/response shapes, error codes,
+limits, and permissions are in [docs/AGENT_CONTRACT.md](docs/AGENT_CONTRACT.md).
 
-Full request/response shapes, error codes and limits: **`docs/AGENT_CONTRACT.md`**.
+## Checks
 
----
+Run these from the project directory:
 
-## Verification
-
-```bash
-npm run typecheck   # tsc --noEmit
-npm test            # 35 tests against a real PostgreSQL database
-npm run build       # production build
-npm run smoke       # 25 end-to-end checks against a running server
+```powershell
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-`npm test` migrates the test database automatically, so it works from a clean
-checkout. `npm run smoke` needs a running server (`npm start`) in another terminal.
+`npm test` migrates and uses `TEST_DATABASE_URL`; it requires the test database to be
+reachable and will clear its test data. Do not point it at production data.
 
-To run everything in sequence:
+The end-to-end API smoke check expects a production server and seeded database. In one
+terminal:
 
-```bash
-npm run verify
+```powershell
+npm run build
+npm start
 ```
 
----
+In another terminal:
 
-## Project layout
-
-```
-app/
-  api/                    HTTP routes (thin handlers over the service layer)
-  layout.tsx              app layout and metadata
-  page.tsx                workspace shell, editor and sharing UI
-lib/
-  tiptap.ts               TipTap types, Zod schema, limits
-  db/                     schema, client, migrations, seed
-  server/
-    auth/                 cookie session and identity resolution
-    authz/                server-side document access checks
-    documents/            repository + service layer
-    import/               md/txt → TipTap JSON, upload validation
-    http/                 error envelope, response helpers, body parsing
-scripts/                  migrate, seed, smoke
-tests/                    Vitest suites
-drizzle/                  generated SQL migrations
-docs/                     contract, security model, work log, assumptions, handoff
+```powershell
+npm run smoke
 ```
 
----
+The smoke script defaults to `http://localhost:3000`. If the server prints another port,
+set `SMOKE_BASE_URL` first, for example in PowerShell:
 
-## Documentation
+```powershell
+$env:SMOKE_BASE_URL = 'http://localhost:3001'
+npm run smoke
+```
 
-| File | Purpose |
-|---|---|
-| `docs/AGENT_CONTRACT.md` | **The canonical API contract**, locked as v1.0.0 |
-| `docs/SECURITY_MODEL.md` | Current security properties and known residual risks; independent review pending |
-| `docs/DEEPSEEK_HANDOFF.md` | Backend lane handoff, integration notes for ChatGPT and Kimi |
-| `docs/WORK_LOG.md` | Cross-lane work log — ChatGPT owns |
-| `docs/ASSUMPTIONS.md` | Every assumption made, why, and what breaks if it is wrong |
-| `docs/ARCHITECTURE.md` | Component boundaries, data flow and deployment shape |
-| `docs/AI_WORKFLOW.md` | Actual AI-assisted work recorded for this checkout |
-| `docs/SUBMISSION.md` | Submission inventory and verification status |
+## Troubleshooting
 
-The walkthrough URL placeholder is `WALKTHROUGH_URL.txt`; a URL will be added only after
-a walkthrough has actually been recorded and published.
+**The page stays on “Opening your workspace…”**
 
----
+Stop the old dev server with Ctrl+C and rerun `npm run dev`. Use the new URL printed by
+Next.js. The dev script uses Webpack to avoid the Windows Turbopack junction error. Check
+`http://localhost:<port>/api/health`; it should return HTTP 200 and `database: "up"`.
+If the database is down, check PostgreSQL and the `DATABASE_URL` in `.env.local`.
 
-## License
+**Port 3000 is already in use**
 
-Private project work for the Ajaia full-stack assignment.
+Use the alternate URL printed by Next.js, or stop the older process that owns port 3000.
+Do not keep opening the old port if the current dev server chose a new one.
+
+**Demo login reports it is disabled**
+
+Set `DEMO_MODE=true` in `.env.local`, restart the dev server, and make sure the demo seed
+has been applied with `npm run db:seed`.
+
+## Project files
+
+```text
+app/                 Next.js app, UI, and API route handlers
+lib/db/              Drizzle schema, migrations, client, and seed helpers
+lib/server/          Auth, authorization, document services, import, and HTTP helpers
+drizzle/             PostgreSQL migrations
+scripts/             Migration, seed, and API smoke scripts
+tests/               Persistence, authorization, import, and Markdown tests
+docs/                API contract, architecture, security, workflow, and release notes
+```
+
+## Project documentation
+
+- [API contract](docs/AGENT_CONTRACT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security model and current verification](docs/SECURITY_MODEL.md)
+- [AI workflow record](docs/AI_WORKFLOW.md)
+- [Integration work log](docs/WORK_LOG.md)
+- [Submission checklist](docs/SUBMISSION.md)
+- [Walkthrough URL status](WALKTHROUGH_URL.txt)
+
+No live deployment or walkthrough URL is claimed in this repository until one has been
+created and verified.

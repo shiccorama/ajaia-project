@@ -54,7 +54,7 @@ production release.
 - No real account registration, passwords, OAuth, or SSO.
 - No simultaneous real-time editing, invitations, comments, or version history.
 - No independent security or functional/UX review has been recorded for this candidate.
-- The generated UI could not be browser-verified in this sandbox; Next build output was
-  blocked by filesystem permission errors under `.next`.
+- The Webpack production build and API smoke checks pass. A browser-level interaction
+  walkthrough is still pending.
 - The project currently expects each browser to use its own demo session. Cross-user
   collaboration is represented by document membership, not presence or live sync.
